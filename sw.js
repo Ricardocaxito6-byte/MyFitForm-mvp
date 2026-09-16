@@ -1,4 +1,9 @@
-const CACHE_NAME = 'myfitform-shell-v1';
+// ============================================================
+// SERVICE WORKER — cache simples do "app shell"
+// Não faz cache de chamadas ao Supabase (dados têm de estar
+// sempre atualizados); apenas dos ficheiros estáticos da app.
+// ============================================================
+const CACHE_NAME = 'myfitform-shell-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -31,8 +36,18 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+  // Nunca fazer cache de pedidos ao Supabase — dados têm de ser sempre frescos.
   if (url.hostname.includes('supabase.co')) return;
+
+  // Rede primeiro (para apanhar sempre a versão mais recente da app);
+  // só usa a cópia em cache se não houver ligação à internet.
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(event.request)
+      .then((response) => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
