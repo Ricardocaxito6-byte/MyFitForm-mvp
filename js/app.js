@@ -35,6 +35,11 @@ const state = {
   photosDone: [false,false,false,false],
   photoChecksReady: [false,false,false,false],
   photoTip: '',
+  currentAssessmentId: null,
+  photoUploading: false,
+  mealPhotoPath: null,
+  mealUploading: false,
+  mealSaving: false,
   processingDone: false,
   workoutsCompleted: 14,
   consistency: 86,
@@ -463,9 +468,20 @@ function screenPhotoPrep(){
       <div class="checklist-item done"><div class="tick">${ic.checkThin}</div><span>Posição correta</span></div>
     </div>
     <div style="height:20px"></div>
-    <button class="btn btn-primary" onclick="state.photoIndex=0; state.photosDone=[false,false,false,false]; state.photoChecksReady=[false,false,false,false]; state.processingDone=false; nav('photoCapture');">Estou pronto</button>
+    <button class="btn btn-primary" onclick="startAssessment()">Estou pronto</button>
   </div>`;
 }
+
+async function startAssessment(){
+  state.photoIndex=0; state.photosDone=[false,false,false,false]; state.photoChecksReady=[false,false,false,false]; state.processingDone=false;
+  if(state.user){
+    const { data, error } = await dataCreateAssessment(state.user.id);
+    if(!error && data) state.currentAssessmentId = data.id;
+  }
+  nav('photoCapture');
+}
+
+const photoAngles = ['front','right','left','back'];
 
 const photoChecks = ['Corpo inteiro visível','Boa iluminação','Distância adequada','Posição correta'];
 const photoTips = ['A procurar o seu corpo…','Melhore a iluminação.','Afaste um pouco o telefone.','Boa posição.'];
@@ -497,9 +513,10 @@ function screenPhotoCapture(){
         Fotografia aprovada
       </div>
       <div style="height:14px"></div>
-      <button class="btn btn-primary" onclick="nextPhoto()">${i<3?'Próxima':'Analisar meu corpo'}</button>
+      <button class="btn btn-primary" ${state.photoUploading?'disabled':''} onclick="nextPhoto()">${state.photoUploading?'A guardar…':(i<3?'Próxima':'Analisar meu corpo')}</button>
     ` : `
-      <button class="btn btn-primary" ${ready?'':'disabled'} onclick="capturePhoto()">${ic.camera} ${ready?'Tirar fotografia':'A verificar…'}</button>
+      <input type="file" accept="image/*" capture="environment" id="camera-input" style="display:none" onchange="handlePhotoCapture(event)">
+      <button class="btn btn-primary" ${ready?'':'disabled'} onclick="document.getElementById('camera-input').click()">${ic.camera} ${ready?'Tirar fotografia':'A verificar…'}</button>
     `}
   </div>`;
 }
@@ -522,10 +539,46 @@ function startPhotoCheck(){
     idx++;
   }, 420);
 }
-function capturePhoto(){ state.photosDone[state.photoIndex] = true; render(); }
+async function handlePhotoCapture(event){
+  const file = event.target.files && event.target.files[0];
+  if(!file) return;
+  const i = state.photoIndex;
+  const angle = photoAngles[i];
+  if(state.user && state.currentAssessmentId){
+    state.photoUploading = true; render();
+    const { path, error } = await dataUploadBodyPhoto(state.user.id, state.currentAssessmentId, angle, file);
+    if(!error) await dataSaveAssessmentPhoto(state.currentAssessmentId, angle, path);
+    state.photoUploading = false;
+  }
+  state.photosDone[i] = true;
+  render();
+}
 function nextPhoto(){
   if(state.photoIndex < 3){ state.photoIndex++; render(); document.getElementById('viewport').scrollTop=0; }
-  else { nav('processing'); startProcessing(); }
+  else { finishAssessmentPhotos(); }
+}
+async function finishAssessmentPhotos(){
+  if(state.user && state.currentAssessmentId){
+    // Estimativas placeholder do MVP — nunca uma medição BIA real.
+    await dataSaveAssessmentEstimates(state.currentAssessmentId, {
+      weight_kg: Number(state.profile.weight) || 64.6,
+      imc: 24.9,
+      body_fat_pct: 36,
+      muscle_mass_kg: 38.9,
+      skeletal_muscle_pct: 37.3,
+      bmr_kcal: 1263,
+      visceral_fat: 8,
+      body_water_pct: 43.9,
+      estimate_source: 'mvp_estimate',
+      is_estimate: true,
+    });
+    await dataSavePostureObservations(state.currentAssessmentId, [
+      { label:'Possível assimetria dos ombros', severity:'attention', description:'O ombro direito aparenta estar ligeiramente mais baixo que o esquerdo.' },
+      { label:'Possível inclinação do tronco', severity:'attention', description:'Foi observado um possível padrão de inclinação lateral.' },
+      { label:'Alinhamento das pernas', severity:'info', description:'Nenhuma assimetria visual relevante identificada.' },
+    ]);
+  }
+  nav('processing'); startProcessing();
 }
 
 function screenProcessing(){
@@ -773,7 +826,8 @@ function screenNutrition(){
         <span style="font-size:13px;">Pré-visualização da câmara</span>
       </div>
     </div>
-    <button class="btn btn-primary" onclick="state.showMealResult=true; render();">${ic.camera} Fotografar refeição</button>
+    <input type="file" accept="image/*" capture="environment" id="meal-camera-input" style="display:none" onchange="handleMealCapture(event)">
+    <button class="btn btn-primary" ${state.mealUploading?'disabled':''} onclick="document.getElementById('meal-camera-input').click()">${ic.camera} ${state.mealUploading?'A carregar foto…':'Fotografar refeição'}</button>
     <div class="divider"></div>
     <label>Refeições recentes</label>
     <div class="card" style="display:flex; align-items:center; gap:14px; margin-top:10px;">
@@ -808,9 +862,32 @@ function screenMealResult(){
     <div style="height:18px"></div>
     <button class="btn btn-secondary" onclick="state.showPortionEditor=true; render();">Corrigir porções</button>
     <div style="height:12px"></div>
-    <button class="btn btn-primary" onclick="state.showMealResult=false; nav('dashboard');">Concluir</button>
+    <button class="btn btn-primary" ${state.mealSaving?'disabled':''} onclick="finishMeal()">${state.mealSaving?'A guardar…':'Concluir'}</button>
   </div>
   ${state.showPortionEditor ? portionEditorModal() : ''}`;
+}
+async function handleMealCapture(event){
+  const file = event.target.files && event.target.files[0];
+  if(!file) return;
+  state.mealUploading = true; render();
+  if(state.user){
+    const { path, error } = await dataUploadMealPhoto(state.user.id, file);
+    if(!error) state.mealPhotoPath = path;
+  }
+  state.mealUploading = false;
+  state.showMealResult = true;
+  render();
+}
+async function finishMeal(){
+  if(state.user){
+    state.mealSaving = true; render();
+    const t = mealTotals();
+    await dataSaveMeal(state.user.id, state.mealPhotoPath, t, state.mealItems);
+    state.mealSaving = false;
+  }
+  state.showMealResult = false;
+  state.mealPhotoPath = null;
+  nav('dashboard');
 }
 function portionEditorModal(){
   const t = mealTotals();
