@@ -559,16 +559,10 @@ function nextPhoto(){
 }
 async function finishAssessmentPhotos(){
   if(state.user && state.currentAssessmentId){
-    // Estimativas placeholder do MVP — nunca uma medição BIA real.
+    // Estimativa do MVP — calculada por fórmula a partir do perfil, nunca uma medição BIA real.
+    const est = computeBodyEstimates(state.profile);
     await dataSaveAssessmentEstimates(state.currentAssessmentId, {
-      weight_kg: Number(state.profile.weight) || 64.6,
-      imc: 24.9,
-      body_fat_pct: 36,
-      muscle_mass_kg: 38.9,
-      skeletal_muscle_pct: 37.3,
-      bmr_kcal: 1263,
-      visceral_fat: 8,
-      body_water_pct: 43.9,
+      ...est,
       estimate_source: 'mvp_estimate',
       is_estimate: true,
     });
@@ -618,52 +612,133 @@ function startProcessing(){
   }, 550);
 }
 
+/* ============ CÁLCULO DE ESTIMATIVAS (fórmulas de referência — não usa IA nem fotografias) ============ */
+function sexFactor(sex){
+  if(sex === 'Masculino') return 1;
+  if(sex === 'Feminino') return 0;
+  return 0.5;
+}
+function fmtPt(num){
+  return String(num).replace('.', ',');
+}
+function fmtKcal(num){
+  return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+function computeBodyEstimates(profile){
+  const weight = Number(profile.weight) || 64.6;
+  const heightCm = Number(profile.height) || 170;
+  const age = Number(profile.age) || 30;
+  const heightM = heightCm / 100;
+  const sexVal = sexFactor(profile.sex);
+
+  const imc = weight / (heightM * heightM);
+
+  const bmrMale = 10*weight + 6.25*heightCm - 5*age + 5;
+  const bmrFemale = 10*weight + 6.25*heightCm - 5*age - 161;
+  const bmr = sexVal===1 ? bmrMale : sexVal===0 ? bmrFemale : (bmrMale+bmrFemale)/2;
+
+  // Fórmula de Deurenberg (estimativa geral a partir do IMC, idade e sexo)
+  let bodyFat = 1.20*imc + 0.23*age - 10.8*sexVal - 5.4;
+  bodyFat = Math.min(50, Math.max(5, bodyFat));
+
+  const leanMass = weight * (1 - bodyFat/100);
+  const muscleMass = leanMass * 0.5;
+  const skeletalMusclePct = (muscleMass/weight) * 100;
+
+  let visceral;
+  if(imc < 18.5) visceral = 4;
+  else if(imc < 25) visceral = 7;
+  else if(imc < 30) visceral = 10;
+  else if(imc < 35) visceral = 13;
+  else visceral = 16;
+
+  // Fórmula de Watson (água corporal total estimada)
+  const tbwMale = 2.447 - 0.09156*age + 0.1074*heightCm + 0.3362*weight;
+  const tbwFemale = -2.097 + 0.1069*heightCm + 0.2466*weight;
+  const tbw = sexVal===1 ? tbwMale : sexVal===0 ? tbwFemale : (tbwMale+tbwFemale)/2;
+  let bodyWaterPct = (tbw/weight) * 100;
+  bodyWaterPct = Math.min(65, Math.max(35, bodyWaterPct));
+
+  return {
+    weight_kg: Math.round(weight*10)/10,
+    imc: Math.round(imc*10)/10,
+    body_fat_pct: Math.round(bodyFat*10)/10,
+    muscle_mass_kg: Math.round(muscleMass*10)/10,
+    skeletal_muscle_pct: Math.round(skeletalMusclePct*10)/10,
+    bmr_kcal: Math.round(bmr),
+    visceral_fat: visceral,
+    body_water_pct: Math.round(bodyWaterPct*10)/10,
+  };
+}
+function fatStatus(bf, sexVal){
+  let lowT, highT;
+  if(sexVal===1){ lowT=10; highT=20; }
+  else if(sexVal===0){ lowT=18; highT=28; }
+  else { lowT=14; highT=24; }
+  if(bf < lowT) return 'baixa';
+  if(bf <= highT) return 'saudável';
+  return 'atenção';
+}
+function muscleStatus(pct){
+  if(pct < 30) return 'desenvolver';
+  if(pct < 38) return 'manter';
+  return 'boa base';
+}
+function condStatus(activity){
+  if(activity==='Sedentário' || activity==='Pouco ativo') return 'melhorar';
+  if(activity==='Moderadamente ativo') return 'manter';
+  if(activity==='Muito ativo') return 'bom';
+  return 'melhorar';
+}
+
 const metricExplanations = {
   'Peso': 'Valor introduzido por si no seu perfil, usado como base para os cálculos seguintes.',
-  'IMC': 'Calculado a partir do seu peso e altura. É um indicador geral e não considera diretamente a sua composição corporal.',
-  'Gordura corporal estimada': 'Estimativa baseada nas informações fornecidas e na análise das fotografias. Não corresponde a uma medição direta por BIA.',
-  'Massa muscular estimada': 'Estimativa visual baseada no contorno corporal identificado nas fotografias e nos seus dados. Não é uma medição laboratorial.',
-  'Músculo esquelético estimado': 'Estimativa derivada da análise de proporções corporais. Valores reais podem variar com o método de medição usado.',
-  'Metabolismo basal estimado': 'Estimativa calculada a partir do seu perfil (idade, sexo, peso e altura), não de uma medição direta do seu metabolismo.',
-  'Gordura visceral estimada': 'Estimativa indicativa baseada em padrões visuais e dados fornecidos. Não substitui exames clínicos.',
-  'Água corporal estimada': 'Estimativa aproximada baseada no seu perfil. Não corresponde a uma medição direta por bioimpedância (BIA).',
+  'IMC': 'Calculado a partir do seu peso e altura (fórmula padrão). É um indicador geral e não considera diretamente a sua composição corporal.',
+  'Gordura corporal estimada': 'Estimativa calculada a partir do seu IMC, idade e sexo (fórmula de referência). Não corresponde a uma medição direta por BIA nem a uma análise das suas fotografias.',
+  'Massa muscular estimada': 'Estimativa calculada a partir do seu peso e da gordura corporal estimada. Não é uma medição laboratorial nem por BIA.',
+  'Músculo esquelético estimado': 'Estimativa derivada do cálculo de massa muscular. Valores reais podem variar com o método de medição usado.',
+  'Metabolismo basal estimado': 'Calculado a partir do seu perfil (idade, sexo, peso e altura) através de uma fórmula de referência, não de uma medição direta do seu metabolismo.',
+  'Gordura visceral estimada': 'Indicador aproximado baseado no seu IMC. Não substitui exames clínicos nem uma medição por BIA.',
+  'Água corporal estimada': 'Estimativa calculada a partir do seu perfil através de uma fórmula de referência. Não corresponde a uma medição direta por bioimpedância (BIA).',
 };
 
 function screenResults(){
+  const est = computeBodyEstimates(state.profile);
   const stats = [
-    {v:`${state.profile.weight||64.6} kg`, l:'Peso'},
-    {v:'24,9', l:'IMC'},
-    {v:'36%', l:'Gordura corporal estimada'},
-    {v:'38,9 kg', l:'Massa muscular estimada'},
-    {v:'37,3%', l:'Músculo esquelético estimado'},
-    {v:'1.263 kcal', l:'Metabolismo basal estimado'},
-    {v:'8', l:'Gordura visceral estimada'},
-    {v:'43,9%', l:'Água corporal estimada'},
+    {v:`${fmtPt(est.weight_kg)} kg`, l:'Peso'},
+    {v:fmtPt(est.imc), l:'IMC'},
+    {v:`${fmtPt(est.body_fat_pct)}%`, l:'Gordura corporal estimada'},
+    {v:`${fmtPt(est.muscle_mass_kg)} kg`, l:'Massa muscular estimada'},
+    {v:`${fmtPt(est.skeletal_muscle_pct)}%`, l:'Músculo esquelético estimado'},
+    {v:`${fmtKcal(est.bmr_kcal)} kcal`, l:'Metabolismo basal estimado'},
+    {v:`${est.visceral_fat}`, l:'Gordura visceral estimada'},
+    {v:`${fmtPt(est.body_water_pct)}%`, l:'Água corporal estimada'},
   ];
+  const sexVal = sexFactor(state.profile.sex);
   return `
   <div class="screen">
     ${topBar('Sua avaliação corporal', 'assessmentIntro')}
     <div class="card" style="background:var(--card-2); margin-bottom:16px;">
-      <p class="muted" style="line-height:1.6;">Dados demonstrativos — os resultados reais dependerão do modelo de IA e da sua validação.</p>
+      <p class="muted" style="line-height:1.6;">Estimativa do MVP — calculada a partir do seu perfil através de fórmulas de referência, sem uso de IA de visão computacional nesta fase.</p>
     </div>
     <div class="stat-grid">
       ${stats.map(s=>`
         <div class="stat-card card-tap" onclick="openExplain('${s.l}')">
           <span class="lbl">${s.l}</span>
           <div class="val">${s.v}</div>
-          <div class="ai-tag">${ic.sparkGreen} ESTIMATIVA POR IA</div>
+          <div class="ai-tag">${ic.sparkGreen} ESTIMATIVA DO MVP</div>
         </div>`).join('')}
     </div>
     <div style="height:8px"></div>
-    <p class="muted center" style="margin-bottom:18px;">Toque num cartão para ver como estimámos o valor.</p>
+    <p class="muted center" style="margin-bottom:18px;">Toque num cartão para ver como calculámos o valor.</p>
 
     <div class="eyebrow">VISÃO GERAL</div>
     <h3 class="h3" style="margin:8px 0 12px 0;">Perfil atual</h3>
     <div class="card">
-      <div class="checklist-item done"><div class="tick" style="background:transparent;">🔥</div><span>Gordura corporal — atenção</span></div>
-      <div class="checklist-item done"><div class="tick" style="background:transparent;">💪</div><span>Massa muscular — desenvolver</span></div>
+      <div class="checklist-item done"><div class="tick" style="background:transparent;">🔥</div><span>Gordura corporal — ${fatStatus(est.body_fat_pct, sexVal)}</span></div>
+      <div class="checklist-item done"><div class="tick" style="background:transparent;">💪</div><span>Massa muscular — ${muscleStatus(est.skeletal_muscle_pct)}</span></div>
       <div class="checklist-item done"><div class="tick" style="background:transparent;">🧍</div><span>Postura — atenção</span></div>
-      <div class="checklist-item done"><div class="tick" style="background:transparent;">⚡</div><span>Condicionamento — melhorar</span></div>
+      <div class="checklist-item done"><div class="tick" style="background:transparent;">⚡</div><span>Condicionamento — ${condStatus(state.activity)}</span></div>
     </div>
     <p class="muted" style="margin-top:10px; line-height:1.6;">Esta visão geral não é um diagnóstico médico nem um score de saúde validado cientificamente.</p>
 
@@ -675,12 +750,12 @@ function screenResults(){
 function openExplain(label){ state.explainMetric = label; state.showExplain = true; render(); }
 function explainModal(){
   const label = state.explainMetric || 'Como calculamos isto?';
-  const text = metricExplanations[state.explainMetric] || 'Este valor é uma estimativa baseada nas fotografias e nas informações fornecidas. Não corresponde a uma medição direta por BIA.';
+  const text = metricExplanations[state.explainMetric] || 'Este valor é uma estimativa calculada a partir do seu perfil. Não corresponde a uma medição direta por BIA.';
   return `
   <div class="modal-backdrop" onclick="if(event.target===this){state.showExplain=false; render();}">
     <div class="modal-sheet">
       <div class="sheet-handle"></div>
-      <div class="ai-tag" style="margin-bottom:8px;">${ic.sparkGreen} ESTIMATIVA POR IA</div>
+      <div class="ai-tag" style="margin-bottom:8px;">${ic.sparkGreen} ESTIMATIVA DO MVP</div>
       <h3 class="h3" style="margin-bottom:10px;">${label}</h3>
       <p class="lede" style="line-height:1.6;">${text}</p>
       <div style="height:18px"></div>
@@ -718,16 +793,25 @@ function screenPosture(){
   </div>`;
 }
 
+function computeDiagnosisPriorities(){
+  const priorities = [];
+  if(state.goals.includes('perder') || state.goals.includes('recomp')) priorities.push({emoji:'🔥', text:'Redução de gordura'});
+  if(state.goals.includes('ganhar') || state.goals.includes('recomp')) priorities.push({emoji:'💪', text:'Desenvolvimento muscular'});
+  if(state.goals.includes('postura')) priorities.push({emoji:'🧍', text:'Melhoria do alinhamento corporal'});
+  if(state.goals.includes('condic')) priorities.push({emoji:'🏃', text:'Melhoria do condicionamento físico'});
+  if(state.goals.includes('saude') || !priorities.length) priorities.push({emoji:'❤️', text:'Hábitos mais saudáveis no dia a dia'});
+  return priorities;
+}
+
 function screenDiagnosis(){
+  const priorities = computeDiagnosisPriorities();
   return `
   <div class="screen">
     ${topBar('Diagnóstico', 'posture')}
     <h2 class="h2">O que o seu corpo precisa?</h2>
     <p class="lede" style="margin:14px 0 16px 0; line-height:1.6;">Com base nos seus objetivos e na avaliação realizada, recomendamos priorizar:</p>
     <div class="stack">
-      <div class="card" style="display:flex; align-items:center; gap:14px;"><span style="font-size:22px;">🔥</span><b>Redução de gordura</b></div>
-      <div class="card" style="display:flex; align-items:center; gap:14px;"><span style="font-size:22px;">💪</span><b>Desenvolvimento muscular</b></div>
-      <div class="card" style="display:flex; align-items:center; gap:14px;"><span style="font-size:22px;">🧍</span><b>Melhoria do alinhamento corporal</b></div>
+      ${priorities.map(p=>`<div class="card" style="display:flex; align-items:center; gap:14px;"><span style="font-size:22px;">${p.emoji}</span><b>${p.text}</b></div>`).join('')}
     </div>
     <p class="lede" style="margin:18px 0 4px 0; line-height:1.6;">O seu plano será adaptado ao seu objetivo, nível de experiência e equipamentos disponíveis.</p>
     <div style="height:16px"></div>
@@ -735,12 +819,18 @@ function screenDiagnosis(){
   </div>`;
 }
 
+function goalsSummaryLabel(){
+  const shortLabel = { perder:'Perder gordura', ganhar:'Ganhar massa muscular', recomp:'Recomposição corporal', postura:'Melhorar postura', condic:'Melhorar condicionamento', saude:'Saúde e bem-estar' };
+  if(!state.goals.length) return 'Melhorar a forma física';
+  return state.goals.slice(0,2).map(k=>shortLabel[k]).join(' + ');
+}
+
 function screenPlan(){
   return `
   <div class="screen">
     ${topBar('Seu plano', 'diagnosis')}
-    <div class="eyebrow">MYFITFORM · PLANO GERADO POR IA</div>
-    <h2 class="h2" style="margin-top:8px;">Perder gordura + desenvolver massa muscular</h2>
+    <div class="eyebrow">MYFITFORM · PLANO PERSONALIZADO</div>
+    <h2 class="h2" style="margin-top:8px;">${goalsSummaryLabel()}</h2>
     <p class="lede" style="margin-top:6px; color:var(--accent); font-weight:600;">Personalizado para você.</p>
     <div class="stat-grid" style="margin-top:14px;">
       <div class="stat-card"><span class="lbl">Frequência</span><div class="val" style="font-size:18px;">4x / semana</div></div>
