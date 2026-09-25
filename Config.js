@@ -1,2 +1,2 @@
-const SUPABASE_URL = "COLA_AQUI_O_TEU_PROJECT_URL";
-const SUPABASE_ANON_KEY = "COLA_AQUI_A_TUA_PUBLISHABLE_KEY";
+const SUPABASE_URL = "https://svjwpenvlsxqfqeekkyy.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_kGUBjtGquR2hw6D5IvKUVw_pwLu-vk9";
