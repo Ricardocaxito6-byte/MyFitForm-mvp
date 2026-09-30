@@ -1176,6 +1176,28 @@ function screenDashboard(){
 }
 
 function screenProgress(){
+  const hist = state.assessmentHistory || [];
+  if(hist.length === 0){
+    return `
+    <div class="screen">
+      <div class="eyebrow">PROGRESSO</div>
+      <h2 class="h2" style="margin-top:8px;">Sua evolução</h2>
+      <div class="card" style="margin-top:18px;">
+        <p class="lede" style="line-height:1.6;">Ainda não tem avaliações corporais guardadas. Faça a sua primeira avaliação para começar a acompanhar a sua evolução.</p>
+      </div>
+      <div class="stat-grid" style="margin-top:14px;">
+        <div class="stat-card"><span class="lbl">Treinos</span><div class="val">${state.workoutsCompleted}</div></div>
+        <div class="stat-card"><span class="lbl">Consistência</span><div class="val">${state.consistency}%</div></div>
+      </div>
+      <div style="height:18px"></div>
+      <button class="btn btn-primary" onclick="state.processingDone=false; nav('assessmentIntro')">Fazer avaliação</button>
+    </div>`;
+  }
+  const first = hist[0];
+  const last = hist[hist.length-1];
+  const w0 = first.weight_kg, w1 = last.weight_kg;
+  const f0 = first.body_fat_pct, f1 = last.body_fat_pct;
+  const m0 = first.muscle_mass_kg, m1 = last.muscle_mass_kg;
   return `
   <div class="screen">
     <div class="eyebrow">PROGRESSO</div>
@@ -1183,22 +1205,22 @@ function screenProgress(){
     <div class="card" style="margin-top:18px;">
       <span class="lbl">PESO</span>
       <div class="bar-compare">
-        <div class="bar-col"><div class="bar" style="height:${state.weightHistory[0]*1.4}px;"></div><span class="num">${state.weightHistory[0]} kg</span><span class="lbl">Início</span></div>
-        <div class="bar-col"><div class="bar accent" style="height:${state.weightHistory[1]*1.4}px;"></div><span class="num">${state.weightHistory[1]} kg</span><span class="lbl">Agora</span></div>
+        <div class="bar-col"><div class="bar" style="height:${w0*1.4}px;"></div><span class="num">${fmtPt(w0)} kg</span><span class="lbl">Início</span></div>
+        <div class="bar-col"><div class="bar accent" style="height:${w1*1.4}px;"></div><span class="num">${fmtPt(w1)} kg</span><span class="lbl">Agora</span></div>
       </div>
     </div>
     <div class="card" style="margin-top:14px;">
       <span class="lbl">GORDURA CORPORAL ESTIMADA</span>
       <div class="bar-compare">
-        <div class="bar-col"><div class="bar" style="height:${state.fatHistory[0]*3}px;"></div><span class="num">${state.fatHistory[0]}%</span><span class="lbl">Início</span></div>
-        <div class="bar-col"><div class="bar accent" style="height:${state.fatHistory[1]*3}px;"></div><span class="num">${state.fatHistory[1]}%</span><span class="lbl">Agora</span></div>
+        <div class="bar-col"><div class="bar" style="height:${f0*3}px;"></div><span class="num">${fmtPt(f0)}%</span><span class="lbl">Início</span></div>
+        <div class="bar-col"><div class="bar accent" style="height:${f1*3}px;"></div><span class="num">${fmtPt(f1)}%</span><span class="lbl">Agora</span></div>
       </div>
     </div>
     <div class="card" style="margin-top:14px;">
       <span class="lbl">MASSA MUSCULAR ESTIMADA</span>
       <div class="bar-compare">
-        <div class="bar-col"><div class="bar" style="height:${state.muscleHistory[0]*3}px;"></div><span class="num">${state.muscleHistory[0]} kg</span><span class="lbl">Início</span></div>
-        <div class="bar-col"><div class="bar accent" style="height:${state.muscleHistory[1]*3}px;"></div><span class="num">${state.muscleHistory[1]} kg</span><span class="lbl">Agora</span></div>
+        <div class="bar-col"><div class="bar" style="height:${m0*3}px;"></div><span class="num">${fmtPt(m0)} kg</span><span class="lbl">Início</span></div>
+        <div class="bar-col"><div class="bar accent" style="height:${m1*3}px;"></div><span class="num">${fmtPt(m1)} kg</span><span class="lbl">Agora</span></div>
       </div>
     </div>
 
@@ -1207,19 +1229,7 @@ function screenProgress(){
       <div class="stat-card"><span class="lbl">Consistência</span><div class="val">${state.consistency}%</div></div>
     </div>
 
-    <div class="divider"></div>
-    <label>Comparação visual</label>
-    <div style="display:flex; gap:12px; margin-top:10px;">
-      <div style="flex:1; text-align:center;">
-        <div class="silhouette-frame" style="height:150px;"><svg viewBox="0 0 100 220" width="60" height="130">${ic.bodyFront}</svg></div>
-        <span class="muted">ANTES</span>
-      </div>
-      <div style="flex:1; text-align:center;">
-        <div class="silhouette-frame captured" style="height:150px;"><svg viewBox="0 0 100 220" width="60" height="130">${ic.bodyFront}</svg></div>
-        <span class="muted">AGORA</span>
-      </div>
-    </div>
-    <p class="muted" style="margin-top:14px; line-height:1.6;">As comparações de composição corporal também são estimativas.</p>
+    <p class="muted" style="margin-top:14px; line-height:1.6;">Estas comparações usam as estimativas calculadas em cada avaliação que fez, da primeira até à mais recente.</p>
     <div style="height:14px"></div>
     <p class="lede center" style="margin-bottom:10px;">Faça uma nova avaliação para acompanhar a sua evolução.</p>
     <button class="btn btn-primary" onclick="state.processingDone=false; nav('assessmentIntro')">Nova avaliação</button>
