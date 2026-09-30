@@ -300,6 +300,8 @@ async function loadProfileIntoState(){
   }
   const { count } = await dataGetCompletedWorkoutsCount(state.user.id);
   state.workoutsCompleted = count;
+  const { data: history } = await dataGetAssessmentHistory(state.user.id);
+state.assessmentHistory = history;
 }
 
 function screenProfileForm(){
