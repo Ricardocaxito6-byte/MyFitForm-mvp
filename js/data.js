@@ -171,3 +171,12 @@ async function dataGetCompletedWorkoutsCount(userId) {
     .eq("status", "completed");
   return { count: count || 0, error };
 }
+async function dataGetAssessmentHistory(userId) {
+  const { data, error } = await sb
+    .from("assessments")
+    .select("id, created_at, weight_kg, body_fat_pct, muscle_mass_kg")
+    .eq("profile_id", userId)
+    .not("weight_kg", "is", null)
+    .order("created_at", { ascending: true });
+  return { data: data || [], error };
+}
