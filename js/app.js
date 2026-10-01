@@ -626,6 +626,8 @@ async function finishAssessmentPhotos(){
       { label:'Possível inclinação do tronco', severity:'attention', description:'Foi observado um possível padrão de inclinação lateral.' },
       { label:'Alinhamento das pernas', severity:'info', description:'Nenhuma assimetria visual relevante identificada.' },
     ]);
+    const { data: history } = await dataGetAssessmentHistory(state.user.id);
+state.assessmentHistory = history;
   }
   nav('processing'); startProcessing();
 }
