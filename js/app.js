@@ -760,7 +760,9 @@ const metricExplanations = {
 };
 
 function screenResults(){
-  const est = computeBodyEstimates(state.profile);
+  const hist = state.assessmentHistory || [];
+const latest = hist.length ? hist[hist.length-1] : null;
+const est = latest || computeBodyEstimates(state.profile);
   const stats = [
     {v:`${fmtPt(est.weight_kg)} kg`, l:'Peso'},
     {v:fmtPt(est.imc), l:'IMC'},
