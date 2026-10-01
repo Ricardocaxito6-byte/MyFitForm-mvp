@@ -174,7 +174,7 @@ async function dataGetCompletedWorkoutsCount(userId) {
 async function dataGetAssessmentHistory(userId) {
   const { data, error } = await sb
     .from("assessments")
-    .select("id, created_at, weight_kg, body_fat_pct, muscle_mass_kg")
+    .select("id, created_at, weight_kg, imc, body_fat_pct, muscle_mass_kg, skeletal_muscle_pct, bmr_kcal, visceral_fat, body_water_pct")
     .eq("profile_id", userId)
     .not("weight_kg", "is", null)
     .order("created_at", { ascending: true });
