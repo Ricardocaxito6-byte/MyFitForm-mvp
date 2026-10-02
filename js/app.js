@@ -24,7 +24,7 @@ const ic = {
 
 /* ============ STATE ============ */
 const state = {
-  screen: 'welcome',
+  screen: 'welcome',errorToast: null,
   profile: { name:'', age:'', sex:'Feminino', height:'', weight:'' },
   activity: null,
   experience: null,
