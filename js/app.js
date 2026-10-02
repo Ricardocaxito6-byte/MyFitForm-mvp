@@ -1329,7 +1329,13 @@ async function handleDeleteAccount(){
 }
 
 /* ============ ROUTER ============ */
-function render(){
+let errorToastTimer = null;
+function showError(msg){
+  state.errorToast = msg;
+  render();
+  clearTimeout(errorToastTimer);
+  errorToastTimer = setTimeout(()=>{ state.errorToast = null; render(); }, 4000);
+}function render(){
   const map = {
     welcome: screenWelcome, signup: screenSignup, login: screenLogin,
     profileForm: screenProfileForm, goals: screenGoals,
@@ -1349,7 +1355,13 @@ function render(){
   if(navEl) navEl.innerHTML = mainScreens.includes(state.screen) ? bottomNav(state.screen) : '';
 
   if(state.screen === 'processing') startProcessing();
-  if(state.screen === 'photoCapture') startPhotoCheck();
+  if(state.screen === 'photoCapture') startPhotoCheck();let toastEl = document.getElementById('error-toast');
+if(!toastEl){
+  toastEl = document.createElement('div');
+  toastEl.id = 'error-toast';
+  document.body.appendChild(toastEl);
+}
+toastEl.innerHTML = state.errorToast ? `<div style="position:fixed; top:14px; left:14px; right:14px; z-index:9999; background:#ff5a5a; color:#1a0000; padding:12px 16px; border-radius:12px; font-size:14px; font-weight:600; text-align:center;">${state.errorToast}</div>` : '';
 }
 
 /* ============ ARRANQUE DA APP — verifica sessão Supabase ============ */
