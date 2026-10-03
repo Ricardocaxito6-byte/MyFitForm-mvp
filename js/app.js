@@ -399,7 +399,7 @@ async function saveProfile(){
   state.profile.weight = String(weight);
 
   if(state.user){
-    await dataSaveProfile(state.user.id, {
+   const {error} = await dataSaveProfile(state.user.id, {
       name: state.profile.name,
       age: age,
       sex: state.profile.sex,
@@ -407,7 +407,11 @@ async function saveProfile(){
       weight_kg: weight,
       activity_level: state.activity,
       experience: state.experience,
-    });
+   }); 
+   if(error){
+  showError('Não foi possível guardar o seu perfil. Tente novamente.');
+  return;
+} 
   }
   nav('goals');
 }
