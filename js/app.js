@@ -1307,8 +1307,8 @@ function screenProfile(){
       <p class="muted">${p.age || 28} anos · ${p.sex || 'Masculino'}</p>
     </div>
     <div class="stat-grid">
-      <div class="stat-card"><span class="lbl">Altura</span><div class="val" style="font-size:18px;">${p.height||178} cm</div></div>
-      <div class="stat-card"><span class="lbl">Peso</span><div class="val" style="font-size:18px;">${p.weight||64.6} kg</div></div>
+      <div class="stat-card card-tap" onclick="openQuickEdit('height','Altura (cm)')"><span class="lbl">Altura</span><div class="val" style="font-size:18px;">${p.height||178} cm</div></div>
+      <div class="stat-card card-tap" onclick="openQuickEdit('weight','Peso (kg)')"><span class="lbl">Peso</span><div class="val" style="font-size:18px;">${p.weight||64.6} kg</div></div>
       <div class="stat-card" style="grid-column:span 2;"><span class="lbl">Objetivo</span><div class="val" style="font-size:16px;">${goalLabel}</div></div>
       <div class="stat-card"><span class="lbl">Atividade</span><div class="val" style="font-size:15px;">${state.activity||'Moderadamente ativo'}</div></div>
       <div class="stat-card"><span class="lbl">Equipamento</span><div class="val" style="font-size:15px;">${state.equipment.length?state.equipment.join(', '):'Nenhum'}</div></div>
