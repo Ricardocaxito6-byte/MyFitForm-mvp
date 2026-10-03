@@ -1319,7 +1319,7 @@ function screenProfile(){
     </div>
     <div style="height:16px"></div>
     <button class="btn btn-secondary" onclick="handleSignOut()">Terminar sessão</button>
-  </div>`;
+  </div>${state.quickEditField ? quickEditModal() : ''}`;
 }
 
 function screenPrivacy(){
