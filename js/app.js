@@ -1056,7 +1056,12 @@ async function handleMealCapture(event){
   state.mealUploading = true; render();
   if(state.user){
     const { path, error } = await dataUploadMealPhoto(state.user.id, file);
-    if(!error) state.mealPhotoPath = path;
+    if(error){
+  state.mealUploading = false;
+  showError('Não foi possível carregar a foto da refeição. Tente novamente.');
+  return;
+}
+state.mealPhotoPath = path;
   }
   state.mealUploading = false;
   state.showMealResult = true;
