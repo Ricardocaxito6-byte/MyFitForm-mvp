@@ -602,7 +602,12 @@ async function handlePhotoCapture(event){
   if(state.user && state.currentAssessmentId){
     state.photoUploading = true; render();
     const { path, error } = await dataUploadBodyPhoto(state.user.id, state.currentAssessmentId, angle, file);
-    if(!error) await dataSaveAssessmentPhoto(state.currentAssessmentId, angle, path);
+    if(error){
+  state.photoUploading = false;
+  showError('Não foi possível guardar a fotografia. Verifique a ligação e tente novamente.');
+  return;
+}
+await dataSaveAssessmentPhoto(state.currentAssessmentId, angle, path);
     state.photoUploading = false;
   }
   state.photosDone[i] = true;
