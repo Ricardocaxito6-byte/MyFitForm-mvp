@@ -832,6 +832,44 @@ function explainModal(){
   </div>`;
 }
 
+function openQuickEdit(field, label){
+  state.quickEditField = field;
+  state.quickEditLabel = label;
+  state.quickEditValue = state.profile[field] || '';
+  render();
+}
+function quickEditModal(){
+  return `
+  <div class="modal-backdrop" onclick="if(event.target===this){state.quickEditField=null; render();}">
+    <div class="modal-sheet">
+      <div class="sheet-handle"></div>
+      <h3 class="h3" style="margin-bottom:14px;">Editar ${state.quickEditLabel}</h3>
+      <div class="field"><input id="quick-edit-input" type="number" value="${state.quickEditValue}"></div>
+      <div style="height:14px"></div>
+      <button class="btn btn-primary" onclick="saveQuickEdit()">Guardar</button>
+    </div>
+  </div>`;
+}
+async function saveQuickEdit(){
+  const val = document.getElementById('quick-edit-input').value;
+  const field = state.quickEditField;
+  state.profile[field] = val;
+  state.quickEditField = null;
+  render();
+  if(state.user){
+    const { error } = await dataSaveProfile(state.user.id, {
+      name: state.profile.name,
+      age: Number(state.profile.age),
+      sex: state.profile.sex,
+      height_cm: Number(state.profile.height),
+      weight_kg: Number(state.profile.weight),
+      activity_level: state.activity,
+      experience: state.experience,
+    });
+    if(error) showError('Não foi possível guardar. Tente novamente.');
+  }
+}
+
 function screenPosture(){
   return `
   <div class="screen">
