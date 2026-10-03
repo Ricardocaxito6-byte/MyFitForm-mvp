@@ -1404,7 +1404,8 @@ function showError(msg){
 
   // Barra de navegação fixa: fica fora da área com scroll, para nunca se mover com o conteúdo.
   const navEl = document.getElementById('bottom-nav-container');
-  if(navEl) navEl.innerHTML = mainScreens.includes(state.screen) ? bottomNav(state.screen) : '';
+  const authScreens = ['welcome','signup','login'];
+if(navEl) navEl.innerHTML = authScreens.includes(state.screen) ? '' : bottomNav(state.screen);
 
   if(state.screen === 'processing') startProcessing();
   if(state.screen === 'photoCapture') startPhotoCheck();let toastEl = document.getElementById('error-toast');
