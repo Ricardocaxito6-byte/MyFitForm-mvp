@@ -283,6 +283,65 @@ async function handleSignIn(){
   nav(state.profile.name ? 'dashboard' : 'profileForm');
 }
 
+function screenForgotPassword(){
+  return `
+  <div class="screen">
+    ${topBar('', 'login')}
+    <h2 class="h2">Recuperar password</h2>
+    <p class="lede" style="margin:8px 0 20px 0;">Introduza o seu email e enviamos-lhe um link para definir uma password nova.</p>
+    ${authErrorBox()}
+    ${state.resetSent ? `
+      <div class="card" style="background:rgba(198,255,61,.08); border-color:rgba(198,255,61,.3);">
+        <p style="font-size:14px; line-height:1.6;">Enviámos um email com um link para definir a sua nova password. Verifique a sua caixa de entrada.</p>
+      </div>
+    ` : `
+      <div class="field"><label>Email</label><input id="reset-email" type="email" placeholder="o.seu@email.com"></div>
+      <div style="height:8px"></div>
+      <button class="btn btn-primary" ${state.authLoading?'disabled':''} onclick="handleSendResetEmail()">${state.authLoading?'A enviar…':'Enviar link'}</button>
+    `}
+  </div>`;
+}
+
+async function handleSendResetEmail(){
+  const email = document.getElementById('reset-email').value.trim();
+  if(!email){
+    state.authError = 'Introduza o seu email.';
+    render(); return;
+  }
+  state.authLoading = true; state.authError=''; render();
+  const { error } = await authResetPassword(email);
+  state.authLoading = false;
+  if(error){ state.authError = error.message; render(); return; }
+  state.resetSent = true;
+  render();
+}
+
+function screenResetPassword(){
+  return `
+  <div class="screen">
+    <h2 class="h2">Defina a sua nova password</h2>
+    <p class="lede" style="margin:8px 0 20px 0;">Escolha uma password nova para a sua conta.</p>
+    ${authErrorBox()}
+    <div class="field"><label>Nova password</label><input id="new-password" type="password" placeholder="Mínimo 6 caracteres"></div>
+    <div style="height:8px"></div>
+    <button class="btn btn-primary" ${state.authLoading?'disabled':''} onclick="handleSetNewPassword()">${state.authLoading?'A guardar…':'Guardar nova password'}</button>
+  </div>`;
+}
+
+async function handleSetNewPassword(){
+  const pass = document.getElementById('new-password').value;
+  if(!pass || pass.length < 6){
+    state.authError = 'A password deve ter pelo menos 6 caracteres.';
+    render(); return;
+  }
+  state.authLoading = true; state.authError=''; render();
+  const { error } = await authUpdatePassword(pass);
+  state.authLoading = false;
+  if(error){ state.authError = error.message; render(); return; }
+  history.replaceState(null, '', window.location.pathname);
+  nav('welcome');
+}
+
 async function loadProfileIntoState(){
   if(!state.user) return;
   const { data } = await dataGetProfile(state.user.id);
