@@ -243,6 +243,7 @@ function screenLogin(){
     ${authErrorBox()}
     <div class="field"><label>Email</label><input id="auth-email" type="email" placeholder="o.seu@email.com"></div>
     <div class="field"><label>Password</label><input id="auth-password" type="password" placeholder="A sua password"></div>
+    <p class="muted" style="text-align:right; margin-top:6px;"><span class="link-btn" style="display:inline; color:var(--accent); text-decoration:none;" onclick="state.authError=''; state.resetSent=false; nav('forgotPassword')">Esqueci a password</span></p>
     <div style="height:8px"></div>
     <button class="btn btn-primary" ${state.authLoading?'disabled':''} onclick="handleSignIn()">${state.authLoading?'A entrar…':'Entrar'}</button>
     <div style="height:14px"></div>
