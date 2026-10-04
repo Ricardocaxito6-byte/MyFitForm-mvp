@@ -1480,6 +1480,11 @@ toastEl.innerHTML = state.errorToast ? `<div style="position:fixed; top:14px; le
 
 /* ============ ARRANQUE DA APP — verifica sessão Supabase ============ */
 async function bootstrapApp(){
+  if(window.location.hash.includes('type=recovery')){
+  state.screen = 'resetPassword';
+  render();
+  return;
+}
   const session = await authGetSession();
   if(session){
     state.user = session.user;
