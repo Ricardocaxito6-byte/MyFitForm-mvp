@@ -1456,6 +1456,7 @@ function showError(msg){
     results: screenResults, posture: screenPosture, diagnosis: screenDiagnosis, plan: screenPlan,
     workoutToday: screenWorkoutToday, nutrition: screenNutrition, aiAssistant: screenAIAssistant,
     dashboard: screenDashboard, progress: screenProgress, profile: screenProfile, privacy: screenPrivacy,
+    forgotPassword: screenForgotPassword, resetPassword: screenResetPassword,
   };
   const fn = map[state.screen] || screenWelcome;
   let html = fn();
