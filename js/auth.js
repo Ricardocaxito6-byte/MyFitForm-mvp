@@ -27,3 +27,8 @@ async function authDeleteAccount() {
   if (!error) await authSignOut();
   return { error };
 }
+async function authResetPassword(email) {
+  return await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin,
+  });
+}
