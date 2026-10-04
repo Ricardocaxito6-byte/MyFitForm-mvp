@@ -32,3 +32,6 @@ async function authResetPassword(email) {
     redirectTo: window.location.origin,
   });
 }
+async function authUpdatePassword(newPassword) {
+  return await sb.auth.updateUser({ password: newPassword });
+}
