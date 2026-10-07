@@ -1264,8 +1264,8 @@ function screenDashboard(){
       <div class="card card-tap" onclick="nav('results')">
         <span class="eyebrow">🧍 AVALIAÇÃO CORPORAL</span>
         <div style="display:flex; gap:24px; margin-top:10px;">
-          <div><div class="val" style="font-family:var(--font-display); font-size:20px; font-weight:700;">${(() => { try { return state.profile.weight ? fmtPt(computeBodyEstimates(state.profile).body_fat_pct) + '%' : '—'; } catch (e) { return '—'; } })()}</div><span class="lbl">Gordura estimada</span></div>
-        <div><div class="val" style="font-family:var(--font-display); font-size:20px; font-weight:700;">${state.profile.weight ? state.profile.weight + ' kg' : '—'}</div><span class="lbl">Peso</span></div>
+          <div><div class="val" style="font-family:var(--font-display); font-size:20px; font-weight:700;">${(() => { try { const h = state.assessmentHistory || []; const e = h.length ? h[h.length-1] : (state.profile.weight ? computeBodyEstimates(state.profile) : null); return e ? fmtPt(e.body_fat_pct) + '%' : '—'; } catch (err) { return '—'; } })()}</div><span class="lbl">Gordura estimada</span></div>
+        <div><div class="val" style="font-family:var(--font-display); font-size:20px; font-weight:700;">${(() => { try { const h = state.assessmentHistory || []; const e = h.length ? h[h.length-1] : (state.profile.weight ? computeBodyEstimates(state.profile) : null); return e ? fmtPt(e.weight_kg) + ' kg' : '—'; } catch (err) { return '—'; } })()}</div><span class="lbl">Peso</span></div>
         </div>
         <div style="height:12px"></div>
         <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="event.stopPropagation(); nav('results');">Ver avaliação</button>
